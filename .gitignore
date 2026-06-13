@@ -1,0 +1,16 @@
+# .NET
+**/bin/
+**/obj/
+*.user
+
+# Node / frontend
+node_modules/
+dist/
+npm-debug.log*
+
+# Env locais (o .env de exemplo do front é versionado de propósito)
+*.local
+
+# IDE
+.vs/
+.idea/

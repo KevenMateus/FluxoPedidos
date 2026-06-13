@@ -1,0 +1,62 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: pedidos-db
+    environment:
+      POSTGRES_DB: pedidos
+      POSTGRES_USER: pedidos
+      POSTGRES_PASSWORD: pedidos
+    ports:
+      - "5432:5432"
+    volumes:
+      - pedidos-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pedidos -d pedidos"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  notification:
+    build: ./microservices/pedidos-notification
+    container_name: pedidos-notification
+    environment:
+      PORT: 3001
+      API_URL: "http://api:8080"
+      SERVICE_TOKEN: "service-token-interno-troque-em-producao"
+    ports:
+      - "3001:3001"
+
+  api:
+    build: ./backend
+    container_name: pedidos-api
+    depends_on:
+      db:
+        condition: service_healthy
+      notification:
+        condition: service_started
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Default: "Host=db;Port=5432;Database=pedidos;Username=pedidos;Password=pedidos"
+      Notifications__BaseUrl: "http://notification:3001"
+      Jwt__SecretKey: "troque-esta-chave-super-secreta-com-pelo-menos-32-bytes!!"
+      Services__Token: "service-token-interno-troque-em-producao"
+      Seed__Enabled: "true"
+      Seed__InitialOrders: "5000"
+    ports:
+      - "5005:8080"
+
+  web:
+    build:
+      context: ./frontend/pedidos-web
+      args:
+        # Embutidos no bundle em build-time; precisam ser acessíveis pelo NAVEGADOR.
+        VITE_API_URL: "http://localhost:5005/api"
+        VITE_NOTIFICATIONS_URL: "http://localhost:3001"
+    container_name: pedidos-web
+    depends_on:
+      - api
+    ports:
+      - "5173:80"
+
+volumes:
+  pedidos-pgdata:

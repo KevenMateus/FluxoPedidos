@@ -1,0 +1,14 @@
+{
+  "name": "pedidos-notification",
+  "version": "1.0.0",
+  "description": "Microserviço que processa o evento de pedido criado (enriquecimento + notificação).",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
