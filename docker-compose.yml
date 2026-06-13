@@ -41,7 +41,7 @@ services:
       Jwt__SecretKey: "troque-esta-chave-super-secreta-com-pelo-menos-32-bytes!!"
       Services__Token: "service-token-interno-troque-em-producao"
       Seed__Enabled: "true"
-      Seed__InitialOrders: "5000"
+      Seed__InitialOrders: "10000"
     ports:
       - "5005:8080"
 

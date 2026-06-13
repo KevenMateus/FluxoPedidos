@@ -91,33 +91,75 @@ public class RevenueRepository : IRevenueRepository
     /// <inheritdoc />
     public async Task<DashboardSummaryDto> GetDashboardAsync(CancellationToken cancellationToken = default)
     {
+        var now = DateTime.UtcNow;
+        var from30 = now.AddDays(-30);
+        var from60 = now.AddDays(-60);
+
         var sql = new StringBuilder();
         sql.AppendLine("SELECT COALESCE(SUM(i.quantity * i.unit_price), 0) AS TotalRevenue,");
         sql.AppendLine("       COUNT(DISTINCT o.id)::int                   AS TotalOrders");
-        sql.AppendLine("FROM orders o");
-        sql.AppendLine("JOIN order_items i ON i.order_id = o.id;");
+        sql.AppendLine("FROM orders o JOIN order_items i ON i.order_id = o.id;");
         sql.AppendLine();
         sql.AppendLine("SELECT status AS Status, COUNT(*)::int AS Count");
-        sql.AppendLine("FROM orders");
-        sql.AppendLine("GROUP BY status");
-        sql.AppendLine("ORDER BY status;");
+        sql.AppendLine("FROM orders GROUP BY status ORDER BY status;");
+        sql.AppendLine();
+        sql.AppendLine("SELECT (o.created_at AT TIME ZONE 'UTC')::date AS Day,");
+        sql.AppendLine("       COUNT(DISTINCT o.id)::int               AS OrderCount,");
+        sql.AppendLine("       COALESCE(SUM(i.quantity * i.unit_price), 0) AS Revenue");
+        sql.AppendLine("FROM orders o JOIN order_items i ON i.order_id = o.id");
+        sql.AppendLine("WHERE o.created_at >= @From30 AND o.created_at < @Now");
+        sql.AppendLine("GROUP BY (o.created_at AT TIME ZONE 'UTC')::date ORDER BY Day;");
+        sql.AppendLine();
+        sql.AppendLine("SELECT o.payment_method               AS PaymentMethod,");
+        sql.AppendLine("       COUNT(DISTINCT o.id)::int       AS OrderCount,");
+        sql.AppendLine("       COALESCE(SUM(i.quantity * i.unit_price), 0) AS Revenue");
+        sql.AppendLine("FROM orders o JOIN order_items i ON i.order_id = o.id");
+        sql.AppendLine("GROUP BY o.payment_method ORDER BY Revenue DESC;");
+        sql.AppendLine();
+        sql.AppendLine("SELECT COALESCE(SUM(i.quantity * i.unit_price), 0) AS TotalRevenue,");
+        sql.AppendLine("       COUNT(DISTINCT o.id)::int                   AS TotalOrders");
+        sql.AppendLine("FROM orders o JOIN order_items i ON i.order_id = o.id");
+        sql.AppendLine("WHERE o.created_at >= @From60 AND o.created_at < @From30;");
 
         using var connection = await _connectionFactory.CreateOpenConnectionAsync(cancellationToken);
-        var command = new CommandDefinition(sql.ToString(), cancellationToken: cancellationToken);
+        var command = new CommandDefinition(sql.ToString(), new { From30 = from30, From60 = from60, Now = now }, cancellationToken: cancellationToken);
         using var multi = await connection.QueryMultipleAsync(command);
 
         var totals = await multi.ReadSingleAsync<TotalsRow>();
         var statusRows = (await multi.ReadAsync<StatusRow>()).ToList();
+        var sparklineRows = (await multi.ReadAsync<RevenueRow>()).ToList();
+        var paymentRows = (await multi.ReadAsync<PaymentRow>()).ToList();
+        var prev = await multi.ReadSingleAsync<TotalsRow>();
 
         return new DashboardSummaryDto
         {
             TotalRevenue = totals.TotalRevenue,
             TotalOrders = totals.TotalOrders,
             AverageTicket = totals.TotalOrders > 0 ? Math.Round(totals.TotalRevenue / totals.TotalOrders, 2) : 0,
+            RevenueThirtyDays = sparklineRows.Sum(r => r.Revenue),
+            OrdersThirtyDays = sparklineRows.Sum(r => r.OrderCount),
+            RevenuePreviousThirtyDays = prev.TotalRevenue,
             ByStatus = statusRows.Select(s =>
             {
                 var status = (OrderStatus)s.Status;
                 return new StatusCountDto { Status = status.ToString(), StatusLabel = Order.StatusLabel(status), Count = s.Count };
+            }).ToList(),
+            SparklineDays = sparklineRows.Select(r => new DailyRevenueDto
+            {
+                Date = DateOnly.FromDateTime(r.Day),
+                OrderCount = r.OrderCount,
+                Revenue = r.Revenue
+            }).ToList(),
+            ByPaymentMethod = paymentRows.Select(r =>
+            {
+                var method = (PaymentMethod)r.PaymentMethod;
+                return new PaymentRevenueDto
+                {
+                    PaymentMethod = method.ToString(),
+                    PaymentMethodLabel = Order.PaymentLabel(method),
+                    OrderCount = r.OrderCount,
+                    Revenue = r.Revenue
+                };
             }).ToList()
         };
     }

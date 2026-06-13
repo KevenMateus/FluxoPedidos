@@ -34,4 +34,5 @@ public class SeedController : ControllerBase
         var result = await _seeder.GenerateForPerformanceAsync(count, cancellationToken);
         return Ok(result);
     }
+
 }

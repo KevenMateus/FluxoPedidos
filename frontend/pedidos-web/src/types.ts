@@ -112,7 +112,12 @@ export interface DashboardSummary {
   totalRevenue: number
   totalOrders: number
   averageTicket: number
+  revenueThirtyDays: number
+  revenuePreviousThirtyDays: number
+  ordersThirtyDays: number
   byStatus: StatusCount[]
+  sparklineDays: DailyRevenue[]
+  byPaymentMethod: PaymentRevenue[]
 }
 
 export interface User {

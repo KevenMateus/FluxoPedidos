@@ -125,42 +125,87 @@ export function CreateOrderForm() {
         />
       </label>
 
-      <div className="lines">
-        {lines.map((l) => {
-          const p = productById.get(l.productId)
-          return (
-            <div className="line" key={l.key}>
-              <select value={l.productId} onChange={(e) => updateLine(l.key, { productId: e.target.value })}>
-                {products.map((prod) => (
-                  <option key={prod.id} value={prod.id}>
-                    {prod.name} — {brl(prod.unitPrice)}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="number"
-                min={1}
-                value={l.quantity}
-                onChange={(e) => updateLine(l.key, { quantity: Math.max(1, Number(e.target.value)) })}
-              />
-              <span className="line-total">{p ? brl(p.unitPrice * l.quantity) : '-'}</span>
-              <button className="ghost" onClick={() => removeLine(l.key)} title="Remover item">
-                Remover
-              </button>
-            </div>
-          )
-        })}
-      </div>
+      {lines.length > 0 && (
+        <div className="item-list">
+          {lines.map((l, idx) => {
+            const p = productById.get(l.productId)
+            return (
+              <div className="item-card" key={l.key}>
+                <div className="item-card-header">
+                  <span className="item-index">{idx + 1}</span>
+                  <button
+                    className="item-remove"
+                    onClick={() => removeLine(l.key)}
+                    title="Remover item"
+                    type="button"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <select
+                  className="item-select"
+                  value={l.productId}
+                  onChange={(e) => updateLine(l.key, { productId: e.target.value })}
+                >
+                  {products.map((prod) => (
+                    <option key={prod.id} value={prod.id}>
+                      {prod.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="item-card-footer">
+                  <div className="item-qty-wrap">
+                    <span className="item-qty-label">Qtd.</span>
+                    <button
+                      className="qty-btn"
+                      type="button"
+                      onClick={() => updateLine(l.key, { quantity: Math.max(1, l.quantity - 1) })}
+                    >
+                      −
+                    </button>
+                    <input
+                      className="qty-input"
+                      type="number"
+                      min={1}
+                      value={l.quantity}
+                      onChange={(e) => updateLine(l.key, { quantity: Math.max(1, Number(e.target.value)) })}
+                    />
+                    <button
+                      className="qty-btn"
+                      type="button"
+                      onClick={() => updateLine(l.key, { quantity: l.quantity + 1 })}
+                    >
+                      +
+                    </button>
+                  </div>
+                  <div className="item-subtotal">
+                    {p ? (
+                      <>
+                        <span className="item-unit-price">{brl(p.unitPrice)} × {l.quantity}</span>
+                        <strong>{brl(p.unitPrice * l.quantity)}</strong>
+                      </>
+                    ) : (
+                      <span className="item-unit-price">—</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
-      <button className="ghost add-line" onClick={addLine} disabled={products.length === 0}>
+      <button className="add-item-btn" onClick={addLine} disabled={products.length === 0} type="button">
+        <span className="add-item-icon">+</span>
         Adicionar item
       </button>
 
       <div className="form-footer">
         <div className="total-box">
-          Total: <strong>{brl(total)}</strong>
+          <span className="total-label">Total</span>
+          <strong className="total-value">{brl(total)}</strong>
         </div>
-        <button className="primary" disabled={!canSubmit || submitting} onClick={submit}>
+        <button className="primary" disabled={!canSubmit || submitting} onClick={submit} type="button">
           {submitting ? 'Salvando...' : 'Criar pedido'}
         </button>
       </div>

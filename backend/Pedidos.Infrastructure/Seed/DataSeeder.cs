@@ -19,7 +19,7 @@ namespace Pedidos.Infrastructure.Seed;
 /// </summary>
 public class DataSeeder
 {
-    private const int CustomerCount = 3_000;
+    private const int CustomerCount = 1_000;
     private const int CopyBatchSize = 10_000;
     private const int RandomSeed = 20260613;
 
@@ -27,6 +27,36 @@ public class DataSeeder
     private readonly string _connectionString;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ILogger<DataSeeder> _logger;
+
+    private static readonly string[][] FirstNamesByLetter =
+    [
+        /* A */ ["Ana", "Adriana", "Alexandre", "Alberto", "Aline", "Amanda", "André", "Antônio", "Alessandra", "Alisson"],
+        /* B */ ["Beatriz", "Bruno", "Bruna", "Bárbara", "Bernardo", "Bianca", "Breno", "Benedito"],
+        /* C */ ["Carlos", "Carla", "Camila", "Caio", "Cláudio", "Cristina", "Cássia", "Cristiano"],
+        /* D */ ["Diego", "Daniela", "Diana", "Douglas", "Débora", "Danilo", "Denise", "Davi"],
+        /* E */ ["Eduardo", "Eliana", "Emília", "Evandro", "Érica", "Elvis", "Edson", "Elaine"],
+        /* F */ ["Felipe", "Fernanda", "Fábio", "Flávia", "Francisco", "Fabrício", "Fernão", "Filipe"],
+        /* G */ ["Gabriel", "Gabriela", "Gustavo", "Giovana", "Guilherme", "Gisele", "Geraldo", "Gleice"],
+        /* H */ ["Henrique", "Heloísa", "Hugo", "Helena", "Haroldo", "Humberto", "Heraldo"],
+        /* I */ ["Igor", "Isabela", "Ivan", "Inês", "Ítalo", "Iara", "Ivo", "Iris"],
+        /* J */ ["João", "Juliana", "José", "Julia", "Jorge", "Jéssica", "Joaquim", "Janaína"],
+        /* K */ ["Karen", "Kevin", "Karina", "Kaio", "Katia", "Keila", "Kleber"],
+        /* L */ ["Lucas", "Larissa", "Leonardo", "Lívia", "Luana", "Luiz", "Leandro", "Lorena"],
+        /* M */ ["Marcos", "Maria", "Mariana", "Matheus", "Mônica", "Miguel", "Murilo", "Melissa"],
+        /* N */ ["Natália", "Nelson", "Nathalia", "Nilton", "Nayara", "Nicolás", "Noemi"],
+        /* O */ ["Osvaldo", "Olivia", "Otávio", "Orlando", "Odete", "Odinei"],
+        /* P */ ["Paulo", "Patricia", "Pedro", "Priscila", "Paula", "Paloma", "Poliana"],
+        /* Q */ ["Queila", "Quintino", "Quézia"],
+        /* R */ ["Rafael", "Renata", "Ricardo", "Roberta", "Rodrigo", "Rosa", "Raquel", "Renan"],
+        /* S */ ["Sara", "Sergio", "Sandra", "Samuel", "Sabrina", "Silvio", "Simone", "Saulo"],
+        /* T */ ["Thiago", "Tatiana", "Tânia", "Thalita", "Tiago", "Taís", "Tainara"],
+        /* U */ ["Ubiratan", "Ursula", "Ulisses", "Úrsula"],
+        /* V */ ["Victor", "Vanessa", "Vinícius", "Viviane", "Vagner", "Valéria", "Vitor"],
+        /* W */ ["Wagner", "Wanderley", "Waleria", "Wellington", "Willian", "Wander"],
+        /* X */ ["Xênia", "Xavier", "Xando"],
+        /* Y */ ["Yasmin", "Yago", "Yuri", "Yolanda"],
+        /* Z */ ["Zilda", "Zilton", "Zélia", "Zacarias"],
+    ];
 
     private static readonly (string Name, string Sku, decimal Price)[] CatalogProducts =
     [
@@ -206,11 +236,15 @@ public class DataSeeder
 
             for (int i = 0; i < CustomerCount; i++)
             {
-                var name = faker.Name.FullName();
-                if (!seenNames.Add(name))
-                    name = $"{name} {faker.Name.LastName()}";
+                var letterGroup = FirstNamesByLetter[i % FirstNamesByLetter.Length];
+                var firstName = letterGroup[faker.Random.Number(0, letterGroup.Length - 1)];
+                var last1 = faker.Name.LastName();
+                var last2 = faker.Name.LastName();
+                var name = $"{firstName} {last1} {last2}";
 
-                seenNames.Add(name);
+                if (!seenNames.Add(name))
+                    name = $"{name} {i + 1}";
+
                 var email = faker.Internet.Email(uniqueSuffix: $"{i}");
                 customers.Add(new Customer(name, email, DateTime.UtcNow));
             }

@@ -56,11 +56,7 @@ export function RevenueReport() {
     doc.setFontSize(10)
     doc.setTextColor(100)
     doc.text(`Período: ${fmt(report.from)} a ${fmt(report.to)}`, 14, 25)
-    doc.text(
-      `Faturamento total: ${brl(report.totalRevenue)}  •  Pedidos: ${report.totalOrders}`,
-      14,
-      31,
-    )
+    doc.text(`Faturamento total: ${brl(report.totalRevenue)}  •  Pedidos: ${report.totalOrders}`, 14, 31)
 
     autoTable(doc, {
       startY: 38,
@@ -83,85 +79,101 @@ export function RevenueReport() {
     pushToast('success', 'PDF gerado no navegador.')
   }
 
-  const maxPay = report ? Math.max(...report.byPaymentMethod.map((p) => p.revenue), 1) : 1
+  const avgTicket = report && report.totalOrders > 0
+    ? report.totalRevenue / report.totalOrders
+    : 0
+
+  const totalPayRev = report
+    ? Math.max(...report.byPaymentMethod.map((p) => p.revenue), 1)
+    : 1
 
   return (
-    <section className="card">
-      <div className="card-header">
-        <h2>Faturamento por período</h2>
-      </div>
-
-      <div className="filters">
-        <label className="field compact">
-          <span>De</span>
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-        </label>
-        <label className="field compact">
-          <span>Até</span>
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-        </label>
-        <button className="primary" onClick={run} disabled={loading}>
-          {loading ? 'Calculando...' : 'Gerar relatório'}
-        </button>
+    <div className="rev-root">
+      {/* ── Filtros ── */}
+      <div className="card rev-filters">
+        <div className="rev-filters-inner">
+          <label className="field compact">
+            <span>De</span>
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          </label>
+          <label className="field compact">
+            <span>Até</span>
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          </label>
+          <button className="primary" onClick={run} disabled={loading}>
+            {loading ? 'Calculando...' : 'Gerar relatório'}
+          </button>
+        </div>
         {report && (
-          <>
-            <button className="ghost" onClick={downloadCsv}>Baixar CSV</button>
-            <button className="ghost" onClick={downloadPdf}>Baixar PDF</button>
-          </>
+          <div className="rev-actions">
+            <button className="ghost small" onClick={downloadCsv}>Baixar CSV</button>
+            <button className="ghost small" onClick={downloadPdf}>Baixar PDF</button>
+          </div>
         )}
       </div>
 
       {report && (
         <>
-          <div className="kpis">
-            <div className="kpi">
-              <span className="kpi-label">Faturamento total</span>
-              <span className="kpi-value">{brl(report.totalRevenue)}</span>
+          {/* ── KPIs ── */}
+          <div className="db-kpis">
+            <div className="db-kpi db-kpi--blue">
+              <span className="db-kpi-label">Faturamento total</span>
+              <span className="db-kpi-value">{brl(report.totalRevenue)}</span>
+              <span className="db-kpi-sub">{fmt(report.from)} — {fmt(report.to)}</span>
             </div>
-            <div className="kpi">
-              <span className="kpi-label">Pedidos no período</span>
-              <span className="kpi-value">{report.totalOrders.toLocaleString('pt-BR')}</span>
+            <div className="db-kpi db-kpi--navy">
+              <span className="db-kpi-label">Pedidos no período</span>
+              <span className="db-kpi-value">{report.totalOrders.toLocaleString('pt-BR')}</span>
+              <span className="db-kpi-sub">{report.days.length} dias com vendas</span>
             </div>
-            <div className="kpi">
-              <span className="kpi-label">Dias com vendas</span>
-              <span className="kpi-value">{report.days.length}</span>
-            </div>
-          </div>
-
-          <div className="chart-toolbar">
-            <span className="muted">Tipo de gráfico:</span>
-            <div className="segmented">
-              {CHART_TYPES.map((c) => (
-                <button
-                  key={c.value}
-                  className={chartType === c.value ? 'active' : ''}
-                  onClick={() => setChartType(c.value)}
-                >
-                  {c.label}
-                </button>
-              ))}
+            <div className="db-kpi db-kpi--cyan">
+              <span className="db-kpi-label">Ticket médio</span>
+              <span className="db-kpi-value">{brl(avgTicket)}</span>
+              <span className="db-kpi-sub">por pedido no período</span>
             </div>
           </div>
 
-          <RevenueChart data={report.days} type={chartType} />
+          {/* ── Gráfico ── */}
+          <div className="card">
+            <div className="chart-toolbar">
+              <span className="db-section-title" style={{ marginBottom: 0 }}>Faturamento por dia</span>
+              <div className="segmented" style={{ marginLeft: 'auto' }}>
+                {CHART_TYPES.map((c) => (
+                  <button
+                    key={c.value}
+                    className={chartType === c.value ? 'active' : ''}
+                    onClick={() => setChartType(c.value)}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <RevenueChart data={report.days} type={chartType} />
+          </div>
 
+          {/* ── Por forma de pagamento ── */}
           {report.byPaymentMethod.length > 0 && (
-            <div className="payment-breakdown">
-              <h4>Por forma de pagamento</h4>
-              {report.byPaymentMethod.map((p) => (
-                <div className="bar-row" key={p.paymentMethod}>
-                  <span className="bar-date">{p.paymentMethodLabel}</span>
-                  <div className="bar-track">
-                    <div className="bar-fill" style={{ width: `${(p.revenue / maxPay) * 100}%` }} />
+            <div className="card db-payment-card">
+              <div className="db-section-title">Por forma de pagamento</div>
+              <div className="db-payment-list">
+                {report.byPaymentMethod.map((p) => (
+                  <div className="db-payment-row" key={p.paymentMethod}>
+                    <span className="db-payment-label">{p.paymentMethodLabel}</span>
+                    <div className="db-payment-track">
+                      <div className="db-payment-fill" style={{ width: `${(p.revenue / totalPayRev) * 100}%` }} />
+                    </div>
+                    <span className="db-payment-revenue">{brl(p.revenue)}</span>
+                    <span className="db-payment-orders">{p.orderCount.toLocaleString('pt-BR')} pedidos</span>
+                    <span className="db-payment-pct">{((p.revenue / report.totalRevenue) * 100).toFixed(1)}%</span>
                   </div>
-                  <span className="bar-value">{brl(p.revenue)}</span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
         </>
       )}
-    </section>
+    </div>
   )
 }
 
